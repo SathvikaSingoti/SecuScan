@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { getFindings } from '../api'
+import { getFindings, FindingsResponse } from '../api'
 import { formatLocaleDate, parseDateSafe, getCurrentTimeZone } from '../utils/date'
 import SavedViewsPanel from '../components/SavedViewsPanel'
 import { useSavedViews, FilterPreset } from '../hooks/useSavedViews'
@@ -249,8 +249,10 @@ export default function Findings() {
   useEffect(() => {
     setLoading(true)
     getFindings(1, perPage)
-      .then((data: any) => {
-        const nextFindings = data.findings || []
+      .then((data: FindingsResponse) => {
+        const nextFindings = (data.findings || []).filter(
+          (finding) => typeof finding.id === 'string',
+        ) as Finding[]
         setFindings(nextFindings)
         setTotalItems(data.total ?? nextFindings.length)
         setPage(1)
@@ -601,7 +603,9 @@ export default function Findings() {
     const nextPage = page + 1
     try {
       const data = await getFindings(nextPage, perPage)
-      const moreFindings = (data.findings || []) as Finding[]
+      const moreFindings = (data.findings || []).filter(
+        (finding) => typeof finding.id === 'string',
+      ) as Finding[]
       if (moreFindings.length > 0) {
         setFindings((prev) => [...prev, ...moreFindings])
         setPage(nextPage)
