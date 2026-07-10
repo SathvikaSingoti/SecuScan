@@ -598,22 +598,23 @@ export default function Findings() {
   }
 
   async function loadMore() {
-    if (loadingMore) return
-    setLoadingMore(true)
-    const nextPage = page + 1
-    try {
-      const data = await getFindings(nextPage, perPage)
-      const moreFindings = (data.findings || []).filter(
-        (finding) => typeof finding.id === 'string',
-      ) as Finding[]
-      if (moreFindings.length > 0) {
-        setFindings((prev) => [...prev, ...moreFindings])
-        setPage(nextPage)
-      }
-    } finally {
-      setLoadingMore(false)
+  if (loadingMore) return
+  setLoadingMore(true)
+  const nextPage = page + 1
+  try {
+    const data = await getFindings(nextPage, perPage)
+    const rawFindings = data.findings || []
+    const moreFindings = rawFindings.filter(
+      (finding) => typeof finding.id === 'string',
+    ) as Finding[]
+    if (rawFindings.length > 0) {
+      setFindings((prev) => [...prev, ...moreFindings])
+      setPage(nextPage)
     }
+  } finally {
+    setLoadingMore(false)
   }
+}
   // ─── Keyboard navigation ────────────────────────────────────────────────────
 
   function handleListKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
