@@ -189,6 +189,31 @@ export interface FindingsResponse {
   per_page?: number
 }
 
+export interface SearchFindingResult {
+  id: string
+  task_id?: string | null
+  title: string
+  category: string
+  severity: string
+  target: string
+  discovered_at?: string
+}
+
+export interface SearchReportResult {
+  id: string
+  task_id?: string | null
+  name: string
+  type: string
+  generated_at: string
+}
+
+export interface SearchResponse {
+  query: string
+  findings: SearchFindingResult[]
+  reports: SearchReportResult[]
+  total: number
+}
+
 export interface TaskResultResponse {
   task_id: string
   plugin_id: string
@@ -420,6 +445,11 @@ export function getFindingGroups(page: number = 1, perPage: number = 50) {
 
 export function getReports() {
   return request('/reports')
+}
+
+export function search(query: string, limit = 20) {
+  const params = new URLSearchParams({ q: query, limit: String(limit) })
+  return request<SearchResponse>(`/search?${params.toString()}`)
 }
 
 export type NotificationChannelType = 'webhook' | 'email'

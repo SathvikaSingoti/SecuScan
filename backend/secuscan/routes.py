@@ -1257,6 +1257,71 @@ async def get_reports(owner: str = Depends(get_current_owner)):
     return await get_or_set_cached(f"reports:list:{owner}", build)
 
 
+def _escape_like(value: str) -> str:
+    """Escape SQLite LIKE wildcards so user input can't inject % or _ patterns."""
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
+@router.get("/search", dependencies=[Depends(read_heavy_limiter)])
+async def search(
+    q: str = Query(..., min_length=1, max_length=200),
+    limit: int = Query(20, ge=1, le=100),
+    owner: str = Depends(get_current_owner),
+):
+    """Search the caller's findings and reports by title/description/name."""
+    db = await get_db()
+    pattern = f"%{_escape_like(q.strip())}%"
+
+    finding_rows = await db.fetchall(
+        """
+        SELECT id, task_id, title, category, severity, target, discovered_at
+        FROM findings
+        WHERE owner_id = ? AND (title LIKE ? ESCAPE '\\' OR description LIKE ? ESCAPE '\\')
+        ORDER BY discovered_at DESC
+        LIMIT ?
+        """,
+        (owner, pattern, pattern, limit),
+    )
+
+    report_rows = await db.fetchall(
+        """
+        SELECT id, task_id, name, type, generated_at
+        FROM reports
+        WHERE owner_id = ? AND name LIKE ? ESCAPE '\\'
+        ORDER BY generated_at DESC
+        LIMIT ?
+        """,
+        (owner, pattern, limit),
+    )
+
+    return {
+        "query": q,
+        "findings": [
+            {
+                "id": row["id"],
+                "task_id": row["task_id"],
+                "title": row["title"],
+                "category": row["category"],
+                "severity": row["severity"],
+                "target": row["target"],
+                "discovered_at": row["discovered_at"],
+            }
+            for row in finding_rows
+        ],
+        "reports": [
+            {
+                "id": row["id"],
+                "task_id": row["task_id"],
+                "name": row["name"],
+                "type": row["type"],
+                "generated_at": row["generated_at"],
+            }
+            for row in report_rows
+        ],
+        "total": len(finding_rows) + len(report_rows),
+    }
+
+
 @router.get("/tasks", dependencies=[Depends(read_heavy_limiter)])
 async def list_tasks(
     page: int = Query(1, ge=1),
